@@ -15,17 +15,14 @@ public Plugin myinfo =
 {
 	name = "[TF2] Block Rainbow Tauntkill",
 	author = PLUGIN_AUTHOR,
-	description = "",
+	description = "Block Rainbow Tauntkill",
 	version = PLUGIN_VERSION,
-	url = ""
+	url = "http://steamcommunity.com/id/battlefieldduck/"
 };
-
-Handle g_hCvarPreventTauntKillEnabled;
 
 public void OnPluginStart()
 {
-	CreateConVar("sm_tfdb_bkt_version", PLUGIN_VERSION, "", FCVAR_SPONLY | FCVAR_NOTIFY);
-	g_hCvarPreventTauntKillEnabled = CreateConVar("tfdb_block_tauntkill", "1", "Block taunt kills?");
+	CreateConVar("sm_tfdb_brt_version", PLUGIN_VERSION, "", FCVAR_SPONLY | FCVAR_NOTIFY);
 }
 
 public void OnMapStart()
@@ -36,21 +33,14 @@ public void OnMapStart()
 	}
 }
 
-
-public void OnClientPutInServer(int clientId)
+public void OnClientPutInServer(int client)
 {
-	if (GetConVarBool(g_hCvarPreventTauntKillEnabled))
-	{
-		SDKHook(clientId, SDKHook_OnTakeDamage, TauntCheck);
-	}
+	SDKHook(client, SDKHook_OnTakeDamage, TauntCheck);
 }
 
 public void OnClientDisconnect(int client)
 {
-	if (GetConVarBool(g_hCvarPreventTauntKillEnabled))
-	{
-		SDKUnhook(client, SDKHook_OnTakeDamage, TauntCheck);
-	}
+	SDKUnhook(client, SDKHook_OnTakeDamage, TauntCheck);
 }
 
 public Action TauntCheck(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom)

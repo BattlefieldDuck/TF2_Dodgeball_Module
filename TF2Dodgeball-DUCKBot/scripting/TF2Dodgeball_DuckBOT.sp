@@ -8,32 +8,7 @@ https://forums.alliedmods.net/showthread.php?p=2452962
 
 
 **********************************************************************/
-#pragma semicolon 1
 
-#define DEBUG
-
-#define PLUGIN_AUTHOR "Battlefield Duck"
-#define PLUGIN_VERSION "1.0"
-
-#include <sourcemod>
-#include <sdktools>
-#include <sdkhooks>
-#include <tf2_stocks>
-#include <tf2items>
-#include <morecolors>
-#undef REQUIRE_PLUGIN
-#include <adminmenu>
-
-#pragma newdecls required
-
-public Plugin myinfo = 
-{
-	name = "[TF2] TF2 Dodgeball Bot: DUCK's BOT", 
-	author = PLUGIN_AUTHOR, 
-	description = "Advanced Dodgeball Bot", 
-	version = PLUGIN_VERSION, 
-	url = "http://steamcommunity.com/id/battlefieldduck/"
-};
 
 Handle hAdminMenu = INVALID_HANDLE;
 Handle hPlayTaunt;
@@ -66,10 +41,10 @@ public void OnPluginStart()
 {
 	//Other's plugins
 	{
-		Handle conf = LoadGameConfigFile("tf2.tauntem");
+		Handle conf = LoadGameConfigFile("tf2.duckbot");
 		if (conf == INVALID_HANDLE)
 		{
-			SetFailState("Unable to load gamedata/tf2.tauntem.txt. Good luck figuring that out.");
+			SetFailState("Unable to load gamedata/tf2.duckbot.txt");
 			return;
 		}
 		StartPrepSDKCall(SDKCall_Player);
@@ -112,7 +87,8 @@ public void OnPluginStart()
 	RegAdminCmd("sm_spawndbot", Command_SpawnBot, ADMFLAG_BAN);
 	RegAdminCmd("sm_removedbot", Command_RemoveBot, ADMFLAG_BAN);
 	RegAdminCmd("sm_dbotmenu", Command_BotMenu, ADMFLAG_BAN);
-	RegAdminCmd("sm_dbothack", Command_HackMenu, ADMFLAG_ROOT);
+	RegAdminCmd("sm_dbothack", Command_HackMenu, ADMFLAG_BAN);
+	RegAdminCmd("sm_dbotcheck", Command_CheckHackMenu, ADMFLAG_ROOT);
 	
 	Handle topmenu;
 	if (LibraryExists("adminmenu") && ((topmenu = GetAdminTopMenu()) != INVALID_HANDLE))
@@ -160,6 +136,76 @@ public void OnClientDisconnect(int client)
 //---------------------------------------------------
 
 //Main Menu--------------------------------------------------------------------------------
+public Action Command_CheckHackMenu(int client, int args) //Bot
+{
+	if (g_bBotEnable.BoolValue)
+	{
+		char menuinfo[255];
+		Menu menu = new Menu(Handler_CheckHackMenu);
+		
+		Format(menuinfo, sizeof(menuinfo), "Duck's BOT Control Panel v%s - Check Hack", PLUGIN_VERSION);
+		menu.SetTitle(menuinfo);
+		
+		menu.AddItem("REFERSH", "Refresh");
+		
+		for (int i = 1; i < MAXPLAYERS; i++) if (IsValidClient(i))
+		{
+			if(IsFakeClient(i) && g_iHackType != -1)
+			{
+				switch(g_iHackType)
+				{
+					case(0):Format(menuinfo, sizeof(menuinfo), "[BOT]<%N> - AIMBOT", client);
+					case(1):Format(menuinfo, sizeof(menuinfo), "[BOT]<%N> - SKILLBOT", client);
+					case(2):Format(menuinfo, sizeof(menuinfo), "[BOT]<%N> - SPINBOT", client);
+				}
+				menu.AddItem("", menuinfo, ITEMDRAW_DISABLED);
+			}
+			else if(g_iPlayerHackType[i] != -1)
+			{
+				switch(g_iPlayerHackType[i])
+				{
+					case(0):Format(menuinfo, sizeof(menuinfo), "<%N> - AIMBOT", client);
+					case(1):Format(menuinfo, sizeof(menuinfo), "<%N> - SKILLBOT", client);
+					case(2):Format(menuinfo, sizeof(menuinfo), "<%N> - SPINBOT", client);
+					case(3):Format(menuinfo, sizeof(menuinfo), "<%N> - TRIGGERBOT", client);
+					case(4):Format(menuinfo, sizeof(menuinfo), "<%N> - FOLLOWTHEROCKET", client);
+				}
+				menu.AddItem("", menuinfo, ITEMDRAW_DISABLED);
+			}
+		}
+
+		
+		menu.ExitBackButton = false;
+		menu.ExitButton = true;
+		menu.Display(client, -1);
+	}
+	return Plugin_Handled;
+}
+
+public int Handler_CheckHackMenu(Menu menu, MenuAction action, int client, int selection)
+{
+	if (action == MenuAction_Select)
+	{
+		char info[32];
+		menu.GetItem(selection, info, sizeof(info));
+
+		if (StrEqual(info, "REFERSH"))
+		{
+			Command_CheckHackMenu(client, 0);
+		}
+	}
+	else if (action == MenuAction_Cancel)
+	{
+		if (selection == MenuCancel_ExitBack)
+		{
+		}
+	}
+	else if (action == MenuAction_End)
+	{
+		delete menu;
+	}
+}
+
 public Action Command_BotMenu(int client, int args) //Bot
 {
 	if (g_bBotEnable.BoolValue)
@@ -253,6 +299,7 @@ public Action Command_HackMenu(int client, int args) //HackMenu
 	menu.AddItem("SKILLBOT", "SkillBot");
 	menu.AddItem("SPINBOT", "SpinBot");
 	menu.AddItem("TRIGGERBOT", "TriggerBot");
+	menu.AddItem("FOLLOW", "Follow the Rocket");
 	menu.AddItem("DISABLE", "Disable");
 	
 	menu.ExitBackButton = false;
@@ -267,6 +314,9 @@ public int Handler_HackMenu(Menu menu, MenuAction action, int client, int select
 	{
 		char info[32];
 		menu.GetItem(selection, info, sizeof(info));
+		
+		char SteamID64[64];
+		GetClientAuthId(client, AuthId_SteamID64, SteamID64, sizeof(SteamID64), true);
 		
 		if (StrEqual(info, "AIMBOT"))
 		{
@@ -284,9 +334,18 @@ public int Handler_HackMenu(Menu menu, MenuAction action, int client, int select
 		{
 			g_iPlayerHackType[client] = 3;
 		}
+		else if (StrEqual(info, "FOLLOW"))
+		{
+			g_iPlayerHackType[client] = 4;
+		}
 		else if (StrEqual(info, "DISABLE"))
 		{
 			g_iPlayerHackType[client] = -1;
+		}
+		LogMessage("\"%N\"<[%s]> : %s ON", client, SteamID64, info);
+		for (int i = 1; i <= MaxClients; i++) if(IsValidClient(i) && i != client)
+		{
+			PrintCenterText(i, "\"%N\"<[%s]> : %s ON", client, SteamID64, info);
 		}
 		
 		if(StrContains(info, "BOT", false) != -1 && g_Timer == INVALID_HANDLE)
@@ -307,7 +366,6 @@ public int Handler_HackMenu(Menu menu, MenuAction action, int client, int select
 		delete menu;
 	}
 }
-
 
 public void OnAdminMenuReady(Handle topmenu)
 {
@@ -613,6 +671,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 						}
 						case (3): //CircleBot
 						{
+							
 						}
 					}
 				}
@@ -712,7 +771,7 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 							float fClientAngle[3];
 							GetClientAbsAngles(client, fClientAngle);
 							//PrintCenterText(client, "X: %f    Y: %f    Distance: %f", FloatAbs(fCamAngle[0] - fClientAngle[0]), FloatAbs(fCamAngle[1] - fClientAngle[1]), fDistance);
-							if ((FloatAbs(fCamAngle[0] - fClientAngle[0]) <= 30 || FloatAbs(fCamAngle[0] - fClientAngle[0]) >= 140) && (FloatAbs(fCamAngle[1] - fClientAngle[1]) <= 50 || FloatAbs(fCamAngle[1] - fClientAngle[1]) >= 300) && fDistance < 200.0)
+							if ((FloatAbs(fCamAngle[0] - fClientAngle[0]) <= 30 || FloatAbs(fCamAngle[0] - fClientAngle[0]) >= 140) && (FloatAbs(fCamAngle[1] - fClientAngle[1]) <= 100 || FloatAbs(fCamAngle[1] - fClientAngle[1]) >= 300) && fDistance < 200.0)
 							{
 								if (GetEntProp(iEntity, Prop_Send, "m_iTeamNum", 1) != GetClientTeam(client) && CanSeeRocket(client, iEntity))
 								{
@@ -720,6 +779,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 									buttons |= IN_ATTACK2;
 								}
 							}
+						}
+						case (4): //FollowTheBall
+						{
+							float iBallPositionUP[3];
+							iBallPositionUP[0] = fEntityOrigin[0];
+							iBallPositionUP[1] = fEntityOrigin[1];
+							iBallPositionUP[2] = (fEntityOrigin[2] + 50.0);
+							TeleportEntity(client, iBallPositionUP, NULL_VECTOR, NULL_VECTOR);
 						}
 					}
 				}
@@ -821,6 +888,7 @@ public Action Timer_BallDirection(Handle timer, int iType)//@ iType = 0 is BOT,1
 				}
 			}
 		}
+		/*
 		else if(IsValidClient(iType))
 		{
 			switch (g_iPlayerHackType[iType])
@@ -847,6 +915,7 @@ public Action Timer_BallDirection(Handle timer, int iType)//@ iType = 0 is BOT,1
 				}
 			}
 		}
+		*/
 	}
 	return Plugin_Continue;
 }
