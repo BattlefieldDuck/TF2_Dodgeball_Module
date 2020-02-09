@@ -8,7 +8,33 @@ https://forums.alliedmods.net/showthread.php?p=2452962
 
 
 **********************************************************************/
+#pragma semicolon 1	
 
+
+#define DEBUG	
+
+#define PLUGIN_AUTHOR "Battlefield Duck"	
+#define PLUGIN_VERSION "1.0"	
+
+#include <sourcemod>	
+#include <sdktools>	
+#include <sdkhooks>	
+#include <tf2_stocks>	
+#include <tf2items>	
+#include <morecolors>	
+#undef REQUIRE_PLUGIN	
+#include <adminmenu>	
+
+#pragma newdecls required	
+
+public Plugin myinfo = 	
+{	
+	name = "[TF2] TF2 Dodgeball Bot: DUCK's BOT", 	
+	author = PLUGIN_AUTHOR, 	
+	description = "Advanced Dodgeball Bot", 	
+	version = PLUGIN_VERSION, 	
+	url = "http://steamcommunity.com/id/battlefieldduck/"	
+};
 
 Handle hAdminMenu = INVALID_HANDLE;
 Handle hPlayTaunt;
@@ -476,18 +502,20 @@ public Action Command_VoteBot(int client, int args)
 		return Plugin_Continue;
 	}
 	
+	int vote = GetVoteCount();
+	
 	if(g_bVoteCount[client])
 	{
 		if(IsBotInGame())
-			CPrintToChat(client, "{gold}[DUCK BOT]{default} You had voted already! Need {green}%i{default} more to disable.", GetVoteCount());
+			CPrintToChat(client, "{gold}[DUCK BOT]{default} You had voted already! Need {green}%i{default} more to disable.", vote);
 		else
-			CPrintToChat(client, "{gold}[DUCK BOT]{default} You had voted already! Need {green}%i{default} more to enable.", GetVoteCount());
+			CPrintToChat(client, "{gold}[DUCK BOT]{default} You had voted already! Need {green}%i{default} more to enable.", vote);
 	}
 	else
 	{
 		g_bVoteCount[client] = true;
 		
-		if(GetVoteCount() <= 0)
+		if(vote <= 0)
 		{
 			if(IsBotInGame())
 				Command_RemoveBot(client, 0);
@@ -497,9 +525,9 @@ public Action Command_VoteBot(int client, int args)
 		else
 		{
 			if(IsBotInGame())
-				CPrintToChatAll("{gold}[DUCK BOT]{green} %N {default}vote for enable {gold}DUCK BOT{default}. Need {green}%i{default} more votes for enable.", client, GetVoteCount());
+				CPrintToChatAll("{gold}[DUCK BOT]{green} %N {default}vote for disable {gold}DUCK BOT{default}. Need {green}%i{default} more votes for disable.", client, vote);
 			else
-				CPrintToChatAll("{gold}[DUCK BOT]{green} %N {default}vote for disable {gold}DUCK BOT{default}. Need {green}%i{default} more votes for disable.", client, GetVoteCount());
+				CPrintToChatAll("{gold}[DUCK BOT]{green} %N {default}vote for enable {gold}DUCK BOT{default}. Need {green}%i{default} more votes for enable.", client, vote);
 		}
 	}
 	
@@ -649,7 +677,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 							}
 							if (!TF2_IsPlayerInCondition(client, TFCond_Taunting)) //Taunting
 							{
-								int itemdef = 1157;
+								int itemdef, rand = GetRandomInt(0, 2);
+								switch (rand)
+								{
+									case (0): itemdef = 1157;
+									case (1): itemdef = 1162;
+									case (2): itemdef = 30672;
+								}
+								
 								int particle = StringToInt("3005");
 								int ent = MakeCEIVEnt(client, itemdef, particle);
 								Address pEconItemView = GetEntityAddress(ent) + view_as<Address>(FindSendPropInfo("CTFWearable", "m_Item"));
@@ -744,7 +779,14 @@ public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3
 							}
 							if (!TF2_IsPlayerInCondition(client, TFCond_Taunting)) //Taunting
 							{
-								int itemdef = 1157;
+								int itemdef, rand = GetRandomInt(0, 2);
+								switch (rand)
+								{
+									case (0): itemdef = 1157;
+									case (1): itemdef = 1162;
+									case (2): itemdef = 30672;
+								}
+								
 								int particle = StringToInt("3005");
 								int ent = MakeCEIVEnt(client, itemdef, particle);
 								Address pEconItemView = GetEntityAddress(ent) + view_as<Address>(FindSendPropInfo("CTFWearable", "m_Item"));
